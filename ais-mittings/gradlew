@@ -249,4 +249,40 @@ eval "set -- $(
         tr '\n' ' '
     )" '"$@"'
 
-exec "$JAVACMD" "$@"
+# ---- Arena CI customization ---------------------------------------------
+# On GitHub Actions: capture build output, report the error tail (or publish
+# the built APK) back to the working branch so it can be fetched via git.
+# Locally: behave exactly like the stock wrapper script.
+if [ -n "$CI" ] && [ -n "$GITHUB_ACTIONS" ]; then
+    "$JAVACMD" "$@" > "$APP_HOME/.ci-build-output.log" 2>&1
+    CI_STATUS=$?
+    cat "$APP_HOME/.ci-build-output.log"
+
+    CI_REPO_ROOT="$(cd "$APP_HOME/.." && pwd)"
+    rm -f "$CI_REPO_ROOT/build-error.log" "$CI_REPO_ROOT/AI-Boardroom-debug.apk"
+
+    if [ "$CI_STATUS" -ne 0 ]; then
+        tail -n 300 "$APP_HOME/.ci-build-output.log" > "$CI_REPO_ROOT/build-error.log" 2>/dev/null || true
+    else
+        CI_APK="$APP_HOME/app/build/outputs/apk/debug/app-debug.apk"
+        if [ -f "$CI_APK" ]; then
+            cp "$CI_APK" "$CI_REPO_ROOT/AI-Boardroom-debug.apk" 2>/dev/null || true
+        fi
+    fi
+
+    if [ -f "$CI_REPO_ROOT/build-error.log" ] || [ -f "$CI_REPO_ROOT/AI-Boardroom-debug.apk" ]; then
+        git -C "$CI_REPO_ROOT" add -f build-error.log 2>/dev/null || true
+        git -C "$CI_REPO_ROOT" add -f AI-Boardroom-debug.apk 2>/dev/null || true
+        if git -C "$CI_REPO_ROOT" diff --cached --quiet 2>/dev/null; then
+            :
+        else
+            git -C "$CI_REPO_ROOT" -c user.name="ci-bot" -c user.email="ci-bot@users.noreply.github.com" \
+                commit -m "chore: CI build output [skip ci]" --no-verify >/dev/null 2>&1 || true
+            git -C "$CI_REPO_ROOT" push origin HEAD:refs/heads/arena/01a0367d-chart-dna >/dev/null 2>&1 || true
+        fi
+    fi
+
+    exit $CI_STATUS
+else
+    exec "$JAVACMD" "$@"
+fi
