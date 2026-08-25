@@ -58,6 +58,11 @@ android {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
+  // Keep Kotlin and Java JVM targets aligned (avoids "Inconsistent JVM-target"
+  // build failures on some setups).
+  kotlinOptions {
+    jvmTarget = "11"
+  }
   buildFeatures {
     compose = true
     buildConfig = true

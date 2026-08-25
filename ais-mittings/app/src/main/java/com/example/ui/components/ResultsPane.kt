@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -156,7 +156,7 @@ fun ResultsPane(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+                            imageVector = Icons.Default.Description,
                             contentDescription = null,
                             tint = TextSecondaryDark.copy(alpha = 0.4f),
                             modifier = Modifier.size(32.dp)
