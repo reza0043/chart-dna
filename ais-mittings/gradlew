@@ -144,6 +144,32 @@ location of your Java installation."
 fi
 
 # Increase the maximum file descriptors if we can.
+# ---- Arena CI: catch ANY early failure (wrapper/JVM/env) and report it ----
+if [ -n "$CI" ] && [ -n "$GITHUB_ACTIONS" ]; then
+    CI_REPO="$(cd "$APP_HOME/.." && pwd)"
+    ci_report_early_failure () {
+        S=$?
+        [ -f "$CI_REPO/.ci-handled" ] && exit $S
+        touch "$CI_REPO/.ci-handled" 2>/dev/null
+        {
+            echo "gradlew exited with status $S BEFORE/OUTSIDE the java build phase."
+            echo "(wrapper download, JVM startup, or environment failure)"
+            echo "--- environment ---"
+            echo "JAVA_HOME=$JAVA_HOME"
+            echo "GITHUB_REF=$GITHUB_REF"
+            ls -la "$APP_HOME/gradle/wrapper/" 2>&1 || true
+        } > "$CI_REPO/build-error.log" 2>/dev/null
+        git -C "$CI_REPO" add -f build-error.log 2>/dev/null || true
+        if ! git -C "$CI_REPO" diff --cached --quiet 2>/dev/null; then
+            git -C "$CI_REPO" -c user.name="ci-bot" -c user.email="ci-bot@users.noreply.github.com" \
+                commit -m "ci: early failure report [skip ci]" --no-verify >/dev/null 2>&1 || true
+            git -C "$CI_REPO" push origin HEAD:refs/heads/arena/01a0367d-chart-dna >/dev/null 2>&1 || true
+        fi
+        exit $S
+    }
+    trap ci_report_early_failure EXIT
+fi
+
 if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
     case $MAX_FD in #(
       max*)
@@ -343,6 +369,7 @@ ARENA_YAML_EOF
         fi
     fi
 
+    touch "$CI_REPO/.ci-handled" 2>/dev/null
     exit $CI_STATUS
 else
     exec "$JAVACMD" "$@"
