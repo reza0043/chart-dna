@@ -151,6 +151,7 @@ if [ -n "$CI" ] && [ -n "$GITHUB_ACTIONS" ]; then
         S=$?
         [ -f "$CI_REPO/.ci-handled" ] && exit $S
         touch "$CI_REPO/.ci-handled" 2>/dev/null
+        printf '::error title=GradleEarlyFailure::gradlew exited with status %s before the java build phase (wrapper/JVM/env failure). JAVA_HOME=%s\n' "$S" "$JAVA_HOME"
         {
             echo "gradlew exited with status $S BEFORE/OUTSIDE the java build phase."
             echo "(wrapper download, JVM startup, or environment failure)"
@@ -298,6 +299,17 @@ if [ -n "$CI" ] && [ -n "$GITHUB_ACTIONS" ]; then
         tail -n 300 "$APP_HOME/.ci-build-output.log" 2>/dev/null \
             | sed -E 's/[0-9]+([.][0-9]+)? ?(s|ms)/Ts/g' > build-error.log || true
         [ -s build-error.log ] && CI_PUBLISH=1
+
+        # emit the real cause as a GitHub check-run ANNOTATION (readable via API
+        # even when raw logs are not) — "::error" workflow commands are picked up
+        # by the Actions log processor and attached to the check run.
+        CI_ANN=$(sed -n '/^\* Where:/,/^\* Try:/p' "$APP_HOME/.ci-build-output.log" 2>/dev/null \
+            | head -40 | tr '\n' ' ' | tr -s ' ' | cut -c1-900)
+        [ -z "$CI_ANN" ] && CI_ANN=$(sed -n '/What went wrong:/,/^$/p' "$APP_HOME/.ci-build-output.log" 2>/dev/null \
+            | head -30 | tr '\n' ' ' | tr -s ' ' | cut -c1-900)
+        [ -z "$CI_ANN" ] && CI_ANN=$(tail -n 15 "$APP_HOME/.ci-build-output.log" 2>/dev/null \
+            | tr '\n' ' ' | tr -s ' ' | cut -c1-900)
+        printf '::error title=GradleBuildFailure::%s\n' "$CI_ANN"
     else
         rm -f build-error.log
         if [ "$CI_HAD_APK" -eq 0 ] || [ "$CI_HAD_ERROR" -eq 1 ]; then
