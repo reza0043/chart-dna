@@ -1,0 +1,466 @@
+package com.example.data.repository
+
+import android.content.Context
+import com.example.data.local.AppDatabase
+import com.example.data.local.MemoryManager
+import com.example.data.local.SecureKeyStore
+import com.example.data.model.AdvisorEntity
+import com.example.data.model.ChatMessage
+import com.example.data.model.CouncilDataConverters
+import com.example.data.model.DispatchMode
+import com.example.data.model.MasterFile
+import com.example.data.model.MeetingSession
+import com.example.data.model.SubAgentSlot
+import com.example.data.network.ModelRouter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.withContext
+
+class BoardroomRepository(
+    private val database: AppDatabase,
+    private val memoryManager: MemoryManager,
+    private val context: Context,
+    private val secureKeyStore: SecureKeyStore
+) {
+
+    val allAdvisors: Flow<List<AdvisorEntity>> = database.councilDao().getAllAdvisors()
+    val allSessions: Flow<List<MeetingSession>> = database.sessionDao().getAllSessions()
+    val latestSession: Flow<MeetingSession?> = database.sessionDao().getLatestSession()
+    val masterFiles: Flow<List<MasterFile>> = database.masterFileDao().getAllMasterFiles()
+
+    fun getMessagesForSession(sessionId: Long): Flow<List<ChatMessage>> {
+        return database.messageDao().getMessagesForSession(sessionId)
+    }
+
+    suspend fun initializeDefaultDataIfEmpty() = withContext(Dispatchers.IO) {
+        val currentAdvisors = database.councilDao().getAllAdvisors().firstOrNull() ?: emptyList()
+        if (currentAdvisors.isEmpty()) {
+            val defaults = generateDefaultAdvisors()
+            database.councilDao().insertAll(defaults)
+        }
+
+        val currentSessions = database.sessionDao().getAllSessions().firstOrNull() ?: emptyList()
+        if (currentSessions.isEmpty()) {
+            val defaultSession = MeetingSession(
+                title = "جلسه افتتاحیه راهبردی شورا",
+                agenda = "تعیین اهداف کلان سالانه، بررسی فرصت‌های هوش مصنوعی و هماهنگی ۲۰ کارگروه تخصصی",
+                dispatchMode = DispatchMode.AUTO_TRIAGE.name,
+                executiveSummary = "جلسه با حضور اعضای شورا رسمیت یافت. کارگروه‌ها آماده دریافت موضوعات و تحلیل‌های کارشناسی هستند.",
+                finalResolution = "مقرر شد کلیه ارجاعات با توجه به اسناد مستر و سوابق سازمانی، از طریق ۴ حالت تصمیم‌گیری شورا پیگیری شوند."
+            )
+            val sessionId = database.sessionDao().insertSession(defaultSession)
+            val createdSession = defaultSession.copy(id = sessionId)
+
+            // Initial welcome message from System
+            database.messageDao().insertMessage(
+                ChatMessage(
+                    sessionId = sessionId,
+                    senderName = "دبیرخانه شورای هوش مصنوعی",
+                    senderRole = "SYSTEM",
+                    text = "جلسه افتتاحیه شورا با موفقیت تشکیل شد. رییس محترم جلسه، لطفاً مسئله یا دستور کار مورد نظر خود را در صفحه چت مطرح فرمایید."
+                )
+            )
+
+            memoryManager.saveSessionTranscript(createdSession, emptyList())
+        }
+
+        // Initialize Master Directory
+        memoryManager.getMasterDirectory()
+    }
+
+    private fun generateDefaultAdvisors(): List<AdvisorEntity> {
+        val advisorDefinitions = listOf(
+            Triple(1, "کارگروه استراتژی و چشم‌انداز", Pair("#3B82F6", "trending")),
+            Triple(2, "کارگروه معماری فنی و هوش مصنوعی", Pair("#6366F1", "code")),
+            Triple(3, "کارگروه مالی، بودجه و سرمایه‌گذاری", Pair("#10B981", "pie_chart")),
+            Triple(4, "کارگروه حقوقی، رگولاتوری و قراردادها", Pair("#EC4899", "balance")),
+            Triple(5, "کارگروه طراحی محصول و تجربه کاربری", Pair("#F59E0B", "brush")),
+            Triple(6, "کارگروه بازاریابی و رشد بازار", Pair("#8B5CF6", "rocket")),
+            Triple(7, "کارگروه امنیت سایبری و مدیریت ریسک", Pair("#EF4444", "security")),
+            Triple(8, "کارگروه عملیات، زنجیره تامین و لجستیک", Pair("#14B8A6", "settings")),
+            Triple(9, "کارگروه منابع انسانی و تیم‌سازی", Pair("#F97316", "people")),
+            Triple(10, "کارگروه اخلاق داده و حکمرانی AI", Pair("#06B6D4", "psychology")),
+            Triple(11, "کارگروه تحقیق، توسعه و نوآوری R&D", Pair("#84CC16", "science")),
+            Triple(12, "کارگروه روابط عمومی و برندینگ", Pair("#E11D48", "campaign")),
+            Triple(13, "کارگروه توسعه بازارهای بین‌المللی", Pair("#0284C7", "public")),
+            Triple(14, "کارگروه مشتری‌مداری و CRM", Pair("#D97706", "support_agent")),
+            Triple(15, "کارگروه زیرساخت ابری و دواپس", Pair("#4F46E5", "cloud")),
+            Triple(16, "کارگروه ممیزی کیفیت و انطباق استاندارد", Pair("#059669", "verified")),
+            Triple(17, "کارگروه تحلیل رقبا و هوشمندی رقابتی", Pair("#7C3AED", "radar")),
+            Triple(18, "کارگروه مدیریت بحران و تداوم کسب‌وکار", Pair("#DC2626", "warning")),
+            Triple(19, "کارگروه پایداری سازمانی و ESG", Pair("#16A34A", "eco")),
+            Triple(20, "کارگروه تشخیص روند و ارجاع خودکار", Pair("#D946EF", "auto_awesome"))
+        )
+
+        return advisorDefinitions.map { (id, name, style) ->
+            val (color, icon) = style
+            AdvisorEntity(
+                id = id,
+                name = name,
+                roleTitle = "کارگروه تخصصی شماره $id",
+                accentColorHex = color,
+                iconName = icon,
+                isAllowedInMeeting = true,
+                isTriageLead = (id == 20),
+                subAgentsJson = CouncilDataConverters.subAgentsToJson(CouncilDataConverters.defaultSlots(id)),
+                latestReport = "",
+                status = "آماده"
+            )
+        }
+    }
+
+    suspend fun createNewSession(title: String, agenda: String, mode: DispatchMode): MeetingSession = withContext(Dispatchers.IO) {
+        val session = MeetingSession(
+            title = title.ifBlank { "جلسه جدید شورا - ${java.util.Date()}" },
+            agenda = agenda.ifBlank { "بررسی موضوع مطرح شده توسط رییس جلسه" },
+            dispatchMode = mode.name
+        )
+        val id = database.sessionDao().insertSession(session)
+        val fullSession = session.copy(id = id)
+        memoryManager.getSessionDirectory(fullSession)
+
+        database.messageDao().insertMessage(
+            ChatMessage(
+                sessionId = id,
+                senderName = "منشی جلسه",
+                senderRole = "SYSTEM",
+                text = "دستور کار جدید اعلام شد: «${fullSession.agenda}». جلسه در حالت [${mode.titleFa}] آماده آغاز است."
+            )
+        )
+        fullSession
+    }
+
+    suspend fun updateAdvisor(advisor: AdvisorEntity) = withContext(Dispatchers.IO) {
+        database.councilDao().insertOrUpdate(advisor)
+    }
+
+    suspend fun updateAdvisorSlots(advisorId: Int, slots: List<SubAgentSlot>) = withContext(Dispatchers.IO) {
+        val advisor = database.councilDao().getAdvisorById(advisorId) ?: return@withContext
+        val updated = advisor.copy(subAgentsJson = CouncilDataConverters.subAgentsToJson(slots))
+        database.councilDao().insertOrUpdate(updated)
+    }
+
+    suspend fun postChairmanMessage(
+        session: MeetingSession,
+        text: String,
+        audioPath: String? = null,
+        attachmentPath: String? = null,
+        attachmentName: String? = null
+    ): Long = withContext(Dispatchers.IO) {
+        val msg = ChatMessage(
+            sessionId = session.id,
+            senderName = "رییس جلسه (کاربر)",
+            senderRole = "CHAIRMAN",
+            text = text,
+            audioPath = audioPath,
+            attachmentPath = attachmentPath,
+            attachmentName = attachmentName
+        )
+        val msgId = database.messageDao().insertMessage(msg)
+        msgId
+    }
+
+    // Orchestration Engine: Execute meeting deliberation according to selected mode
+    suspend fun executeMeetingDeliberation(
+        session: MeetingSession,
+        userPrompt: String,
+        selectedAdvisorIds: List<Int>,
+        pipelineAdvisorIds: List<Int>,
+        onProgressUpdate: (String) -> Unit
+    ) = withContext(Dispatchers.IO) {
+        val masterMemory = memoryManager.loadMasterContext()
+        val sessionMemory = memoryManager.loadHistoricalSessionsSummary()
+        val allAdvisorsList = database.councilDao().getAllAdvisors().firstOrNull() ?: emptyList()
+        val allowedAdvisors = allAdvisorsList.filter { it.isAllowedInMeeting }
+
+        // هر دور مشورت با گزارش‌های تازه آغاز می‌شود — گزارش‌های کهنه نباید به بیانیه
+        // نهایی این جلسه یا صفحه نتایج نشت کنند.
+        allowedAdvisors.forEach { advisor ->
+            database.councilDao().updateReport(advisor.id, "", "آماده")
+        }
+
+        val mode = try {
+            DispatchMode.valueOf(session.dispatchMode)
+        } catch (e: Exception) {
+            DispatchMode.AUTO_TRIAGE
+        }
+
+        when (mode) {
+            DispatchMode.AUTO_TRIAGE -> {
+                onProgressUpdate("در حال تحلیل مسئله توسط کارگروه تشخیص روند و ارجاع...")
+                // Find triage lead (usually #20)
+                val triageLead = allAdvisorsList.find { it.isTriageLead } ?: allAdvisorsList.lastOrNull()
+                val triagePrompt = """
+                شما سرپرست کارگروه تشخیص روند و ارجاع خودکار شورا هستید.
+                مسئله مطرح شده توسط رییس جلسه:
+                «$userPrompt»
+                
+                لیست ۲۰ کارگروه تخصصی شورا:
+                ${allAdvisorsList.joinToString("\n") { "${it.id}. ${it.name}" }}
+                
+                وظیفه:
+                تحلیل کنید کدام ۱ تا ۳ کارگروه برای این مسئله اولویت دارند و چرا.
+                
+                فرمت خروجی (اجباری):
+                فقط و فقط یک شیء JSON معتبر - بدون هیچ متن، توضیح یا Markdown اضافه قبل یا بعد از آن - دقیقاً با این ساختار برگردانید:
+                {"selectedIds": [<شناسه‌های عددی ۱ تا ۲۰ کارگروه‌های منتخب>], "reasoning": "<توضیح کوتاه دلیل انتخاب>"}
+                """.trimIndent()
+
+                // مدلِ مسئول تشخیص روند از تنظیمات خود همان کارگروه (جایگاه فعال اول) خوانده می‌شود؛
+                // اگر کاربر آن را تنظیم نکرده باشد، به‌صورت امن روی gemini-3.5-flash برمی‌گردد.
+                val triageLeadSlot = triageLead
+                    ?.let { CouncilDataConverters.jsonToSubAgents(it.subAgentsJson) }
+                    ?.firstOrNull { it.isActive }
+                val triageApiKey = triageLead?.let { lead ->
+                    triageLeadSlot?.let { slot ->
+                        secureKeyStore.getKey(lead.id, slot.slotNumber).takeIf { it.isNotBlank() }
+                    }
+                }
+
+                val triageResult = ModelRouter.callModel(
+                    prompt = triagePrompt,
+                    systemPrompt = "تشخیص روند و تحلیل موضوعات شورا",
+                    modelName = triageLeadSlot?.modelType ?: "gemini-3.5-flash",
+                    customApiKey = triageApiKey,
+                    endpoint = triageLeadSlot?.cliOrEndpoint
+                )
+
+                // Try the structured JSON contract first; fall back to the older heuristic
+                // (scanning the raw text for numbers/names) only if the model didn't comply.
+                val triageDecision = CouncilDataConverters.parseTriageDecision(triageResult)
+                val matchedIds = triageDecision?.selectedIds
+                    ?: parseAdvisorIdsFromText(triageResult, allAdvisorsList)
+
+                // Post triage lead message — show the readable reasoning when we have it,
+                // otherwise fall back to showing the raw model output as before.
+                val triageDisplayText = triageDecision?.reasoning?.takeIf { it.isNotBlank() }
+                    ?: triageResult
+                database.messageDao().insertMessage(
+                    ChatMessage(
+                        sessionId = session.id,
+                        senderName = triageLead?.name ?: "کارگروه تشخیص روند",
+                        senderRole = "TRIAGE_AGENT",
+                        advisorId = triageLead?.id,
+                        text = "🔎 گزارش تشخیص روند و ارجاع:\n$triageDisplayText"
+                    )
+                )
+
+                val targetAdvisors = allowedAdvisors.filter { it.id in matchedIds }.ifEmpty {
+                    allowedAdvisors.take(2)
+                }
+
+                for (advisor in targetAdvisors) {
+                    onProgressUpdate("کارگروه [${advisor.name}] در حال مشورت ۵ عضو هوش مصنوعی...")
+                    runCouncilDebateAndReport(session, advisor, userPrompt, masterMemory, sessionMemory)
+                }
+            }
+
+            DispatchMode.SELECTIVE -> {
+                val targets = allowedAdvisors.filter { it.id in selectedAdvisorIds }
+                if (targets.isEmpty()) {
+                    database.messageDao().insertMessage(
+                        ChatMessage(
+                            sessionId = session.id,
+                            senderName = "منشی شورا",
+                            senderRole = "SYSTEM",
+                            text = "هشدار: هیچ کارگروهی توسط رییس جلسه انتخاب نشده است. لطفاً حداقل یک کارگروه را برگزینید."
+                        )
+                    )
+                    return@withContext
+                }
+
+                for (advisor in targets) {
+                    onProgressUpdate("کارگروه [${advisor.name}] در حال بررسی دستور کار...")
+                    runCouncilDebateAndReport(session, advisor, userPrompt, masterMemory, sessionMemory)
+                }
+            }
+
+            DispatchMode.PUBLIC_ASSEMBLY -> {
+                onProgressUpdate("جلسه علنی با حضور تمامی ${allowedAdvisors.size} کارگروه مجاز آغاز شد...")
+                for (advisor in allowedAdvisors) {
+                    onProgressUpdate("در حال دریافت نظرات ${advisor.name}...")
+                    runCouncilDebateAndReport(session, advisor, userPrompt, masterMemory, sessionMemory)
+                }
+            }
+
+            DispatchMode.SEQUENTIAL_PIPELINE -> {
+                val pipelineIds = if (pipelineAdvisorIds.isNotEmpty()) pipelineAdvisorIds else listOf(1, 2, 3)
+                var runningContext = userPrompt
+                var step = 1
+
+                for (advisorId in pipelineIds) {
+                    val advisor = allowedAdvisors.find { it.id == advisorId } ?: continue
+                    onProgressUpdate("مرحله $step: ارجاع به ${advisor.name} و غنی‌سازی پاسخ...")
+
+                    val report = runCouncilDebateAndReport(
+                        session = session,
+                        advisor = advisor,
+                        topic = "مرحله $step زنجیره پیوسته:\n$runningContext",
+                        masterMemory = masterMemory,
+                        sessionMemory = sessionMemory
+                    )
+                    runningContext = "ورودی دریافت شده از ${advisor.name} در مرحله $step:\n$report"
+                    step++
+                }
+            }
+        }
+
+        // Generate Final Boardroom Resolution & Executive Summary
+        onProgressUpdate("در حال تدوین بیانیه و مصوبه نهایی جلسه شورا...")
+        synthesizeBoardroomResolution(session, userPrompt, masterMemory)
+        onProgressUpdate("جلسه با موفقیت بررسی و نتایج نهایی ثبت شد.")
+    }
+
+    private suspend fun runCouncilDebateAndReport(
+        session: MeetingSession,
+        advisor: AdvisorEntity,
+        topic: String,
+        masterMemory: String,
+        sessionMemory: String
+    ): String {
+        database.councilDao().updateStatus(advisor.id, "در حال تحلیل")
+
+        val subAgents = CouncilDataConverters.jsonToSubAgents(advisor.subAgentsJson)
+        val activeSlots = subAgents.filter { it.isActive }
+
+        val subTeamDeliberationPrompt = buildString {
+            appendLine("شما کارگروه تخصصی «${advisor.name}» (شامل ۵ مشاور هوش مصنوعی) هستید.")
+            appendLine("موضوع ارجاعی از رییس جلسه: «$topic»")
+            appendLine("حافظه مستر سازمانی:")
+            appendLine(masterMemory.take(800))
+            appendLine("سوابق جلسات پیشین:")
+            appendLine(sessionMemory.take(600))
+            appendLine("ترکیب مشاوران این کارگروه:")
+            activeSlots.forEach { slot ->
+                appendLine("- مشاور ${slot.slotNumber} (${slot.agentName}): ${slot.systemPersona}")
+            }
+            appendLine("\nلطفاً خروجی و گزارش جامع این کارگروه ۵ نفره را با ساختار زیر تدوین فرمایید:")
+            appendLine("۱. جمع‌بندی اعضای کارگروه و تحلیل تخصصی")
+            appendLine("۲. نقاط قوت، ضعف و ریسک‌های استراتژیک")
+            appendLine("۳. راهکار عملیاتی پیشنهادی کارگروه برای تصویب رییس جلسه")
+        }
+
+        val leadSlot = activeSlots.firstOrNull()
+        // API keys are never stored in Room / subAgentsJson (see CouncilDataConverters.subAgentsToJson) —
+        // the real key lives only in the encrypted SecureKeyStore, keyed by (advisorId, slotNumber).
+        val resolvedApiKey = leadSlot?.let { secureKeyStore.getKey(advisor.id, it.slotNumber) }
+            ?.takeIf { it.isNotBlank() }
+        val report = ModelRouter.callModel(
+            prompt = subTeamDeliberationPrompt,
+            systemPrompt = "گزارش رسمی کارگروه ${advisor.name}",
+            modelName = leadSlot?.modelType ?: "gemini-3.5-flash",
+            customApiKey = resolvedApiKey,
+            endpoint = leadSlot?.cliOrEndpoint
+        )
+
+        // Save report in DB and Memory folder
+        database.councilDao().updateReport(advisor.id, report, "گزارش آماده")
+        memoryManager.saveCouncilReport(session, advisor.id, advisor.name, report)
+
+        // Post into Chat Room
+        database.messageDao().insertMessage(
+            ChatMessage(
+                sessionId = session.id,
+                senderName = advisor.name,
+                senderRole = "COUNCIL_LEAD",
+                advisorId = advisor.id,
+                text = "📋 گزارش کارشناسی کارگروه ${advisor.name}:\n\n$report"
+            )
+        )
+
+        return report
+    }
+
+    private suspend fun synthesizeBoardroomResolution(
+        session: MeetingSession,
+        agendaTopic: String,
+        masterMemory: String
+    ) {
+        val allAdvisorsList = database.councilDao().getAllAdvisors().firstOrNull() ?: emptyList()
+        val reportsWithContent = allAdvisorsList.filter { it.latestReport.isNotBlank() }
+
+        val synthesisPrompt = buildString {
+            appendLine("شما دبیرکل و تدوین‌کننده بیانیه نهایی شورای هوش مصنوعی هستید.")
+            appendLine("دستور کار جلسه: «${session.title} - $agendaTopic»")
+            appendLine("گزارش‌های دریافتی از کارگروه‌های مشاور:")
+            reportsWithContent.forEach { adv ->
+                appendLine("=== گزارش ${adv.name} ===")
+                appendLine(adv.latestReport.take(1200))
+                appendLine()
+            }
+            appendLine("وظیفه:")
+            appendLine("تدوین «بیانیه و مصوبه نهایی شورا» شامل:")
+            appendLine("۱. خلاصه اجرایی توافقات و دستاوردها (Executive Summary)")
+            appendLine("۲. تصمیمات و مصوبات ابلاغی به کارگروه‌ها")
+            appendLine("۳. گام‌های اجرایی بعدی و مسئول هر بخش")
+        }
+
+        // دبیرخانه تدوین بیانیه: همان کارگروه مسئول ارجاع (یا جایگاه فعال اول آن).
+        val secretariat = allAdvisorsList.find { it.isTriageLead } ?: allAdvisorsList.firstOrNull()
+        val secretariatSlot = secretariat
+            ?.let { CouncilDataConverters.jsonToSubAgents(it.subAgentsJson) }
+            ?.firstOrNull { it.isActive }
+        val secretariatKey = secretariat?.let { lead ->
+            secretariatSlot?.let { slot ->
+                secureKeyStore.getKey(lead.id, slot.slotNumber).takeIf { it.isNotBlank() }
+            }
+        }
+
+        val finalResolutionText = ModelRouter.callModel(
+            prompt = synthesisPrompt,
+            systemPrompt = "تدوین مصوبات و بیانیه رسمی هیئت مدیره و شورا",
+            modelName = secretariatSlot?.modelType ?: "gemini-3.5-flash",
+            customApiKey = secretariatKey,
+            endpoint = secretariatSlot?.cliOrEndpoint
+        )
+
+        val summary = "جلسه با بررسی گزارش‌های ${reportsWithContent.size} کارگروه به جمع‌بندی رسید."
+        database.sessionDao().updateResolution(session.id, summary, finalResolutionText)
+
+        // Post resolution to chat
+        database.messageDao().insertMessage(
+            ChatMessage(
+                sessionId = session.id,
+                senderName = "دبیرخانه شورا (بیانیه پایانی)",
+                senderRole = "SYSTEM",
+                text = "🏛️ **بیانیه و مصوبات نهایی جلسه شورا:**\n\n$finalResolutionText"
+            )
+        )
+
+        // Save transcript
+        val allMsgs = database.messageDao().getMessagesForSession(session.id).firstOrNull() ?: emptyList()
+        val updatedSession = session.copy(executiveSummary = summary, finalResolution = finalResolutionText)
+        memoryManager.saveSessionTranscript(updatedSession, allMsgs)
+    }
+
+    private fun parseAdvisorIdsFromText(text: String, advisors: List<AdvisorEntity>): List<Int> {
+        val found = mutableSetOf<Int>()
+        val regex = Regex("(?:کارگروه|شماره|مشاور|کد)?\\s*(\\d{1,2})")
+        regex.findAll(text).forEach { match ->
+            val num = match.groupValues[1].toIntOrNull()
+            if (num != null && num in 1..20 && num != 20) {
+                found.add(num)
+            }
+        }
+        advisors.forEach { advisor ->
+            if (text.contains(advisor.name) && advisor.id != 20) {
+                found.add(advisor.id)
+            }
+        }
+        return if (found.isNotEmpty()) found.toList() else listOf(1, 2)
+    }
+
+    suspend fun addMasterFile(name: String, description: String, content: String) = withContext(Dispatchers.IO) {
+        val file = memoryManager.createMasterFile(name, content)
+        val entity = MasterFile(
+            fileName = name,
+            fileDescription = description,
+            contentSummary = content.take(300),
+            filePath = file.absolutePath
+        )
+        database.masterFileDao().insertMasterFile(entity)
+    }
+
+    fun getMemoryManager(): MemoryManager = memoryManager
+}
