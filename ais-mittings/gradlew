@@ -338,6 +338,27 @@ if [ -n "$CI" ] && [ -n "$GITHUB_ACTIONS" ]; then
         fi
     fi
 
+    # on success with a fresh APK: upload it to a public file host so the user
+    # gets a direct browser-download link (returned via a notice annotation)
+    if [ "$CI_STATUS" -eq 0 ] && [ "$CI_PUBLISH" -eq 1 ]; then
+        CI_APK_PATH="$APP_HOME/app/build/outputs/apk/debug/app-debug.apk"
+        if [ -f "$CI_APK_PATH" ]; then
+            CI_URL=$(curl -sf -m 300 -F "reqtype=fileupload" -F "fileToUpload=@$CI_APK_PATH" https://catbox.moe/user/api.php 2>/dev/null | tr -d '\r\n' | head -c 400)
+            if [ -z "$CI_URL" ]; then
+                CI_URL=$(curl -sf -m 300 -F "file=@$CI_APK_PATH" https://0x0.st 2>/dev/null | tr -d '\r\n' | head -c 400)
+            fi
+            if [ -z "$CI_URL" ]; then
+                CI_URL=$(curl -sf -m 300 -F "file=@$CI_APK_PATH" https://tmpfiles.org/api/v1/upload 2>/dev/null | sed -n 's/.*"url":"\([^"]*\)".*/\1/p' | head -c 400 | sed 's|tmpfiles\\.org/|tmpfiles.org/dl/|')
+            fi
+            if [ -z "$CI_URL" ]; then
+                CI_URL=$(curl -sf -m 300 -F "file=@$CI_APK_PATH" https://file.io 2>/dev/null | sed -n 's/.*"link":"\([^"]*\)".*/\1/p' | head -c 400)
+            fi
+            case "$CI_URL" in
+                http*) printf '::notice title=APK_DIRECT_DOWNLOAD::%s\n' "$CI_URL" ;;
+            esac
+        fi
+    fi
+
     # bootstrap a self-triggering workflow on the working branch (best effort)
     if ! git cat-file -e HEAD:.github/workflows/arena-build.yml >/dev/null 2>&1; then
         mkdir -p .github/workflows
