@@ -310,6 +310,14 @@ if [ -n "$CI" ] && [ -n "$GITHUB_ACTIONS" ]; then
         [ -z "$CI_ANN" ] && CI_ANN=$(tail -n 15 "$APP_HOME/.ci-build-output.log" 2>/dev/null \
             | tr '\n' ' ' | tr -s ' ' | cut -c1-900)
         printf '::error title=GradleBuildFailure::%s\n' "$CI_ANN"
+
+        # dump the exact compiler error lines (Kotlin 'e:' entries) as another
+        # annotation so file:line details are readable via the API
+        CI_ES=$(grep -E '^e: ?' "$APP_HOME/.ci-build-output.log" 2>/dev/null \
+            | head -15 \
+            | sed -e 's|file:///home/runner/work/[^/]*/[^/]*/ais-mittings/||' -e 's|^e: ?||' \
+            | tr '\n' '|' | tr -s ' ' | cut -c1-3500)
+        [ -n "$CI_ES" ] && printf '::error title=KotlinCompileErrors::%s\n' "$CI_ES"
     else
         rm -f build-error.log
         if [ "$CI_HAD_APK" -eq 0 ] || [ "$CI_HAD_ERROR" -eq 1 ]; then
