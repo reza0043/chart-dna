@@ -137,7 +137,7 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
                     Toast.makeText(context, "حجم فایل پیوست باید کمتر از ۵ مگابایت باشد", Toast.LENGTH_LONG).show()
                 } else {
                     val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-                    if (!bytes.isNullOrEmpty()) {
+                    if (bytes != null && bytes.isNotEmpty()) {
                         viewModel.attachFile(fileName, bytes)
                         Toast.makeText(context, "فایل «$fileName» به جلسه پیوست شد", Toast.LENGTH_SHORT).show()
                     } else {

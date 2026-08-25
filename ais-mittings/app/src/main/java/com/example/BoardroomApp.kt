@@ -31,7 +31,7 @@ class BoardroomApp : Application() {
             applicationContext,
             AppDatabase::class.java,
             "boardroom_database.db"
-        ).fallbackToDestructiveMigration(dropAllTables = true).build()
+        ).fallbackToDestructiveMigration().build()
 
         memoryManager = MemoryManager(applicationContext)
         secureKeyStore = SecureKeyStore(applicationContext)

@@ -233,7 +233,7 @@ fun AdvisorWindowCard(
                         Icon(
                             imageVector = Icons.Default.Description,
                             contentDescription = "گزارش کارگروه",
-                            tint = if (advisor.latestReport.isNotBlank()) accent else TextSecondaryDark,
+                            tint = if (advisor.latestReport.isNotBlank()) accentColor else TextSecondaryDark,
                             modifier = Modifier.size(12.dp)
                         )
                     }
