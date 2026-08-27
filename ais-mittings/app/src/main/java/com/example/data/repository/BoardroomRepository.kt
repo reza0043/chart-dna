@@ -44,7 +44,7 @@ class BoardroomRepository(
         if (currentSessions.isEmpty()) {
             val defaultSession = MeetingSession(
                 title = "جلسه افتتاحیه راهبردی شورا",
-                agenda = "تعیین اهداف کلان سالانه، بررسی فرصت‌های هوش مصنوعی و هماهنگی ۲۰ کارگروه تخصصی",
+                agenda = "تعیین اهداف کلان سالانه، بررسی فرصت‌های هوش مصنوعی و هماهنگی کارگروه‌های تخصصی",
                 dispatchMode = DispatchMode.AUTO_TRIAGE.name,
                 executiveSummary = "جلسه با حضور اعضای شورا رسمیت یافت. کارگروه‌ها آماده دریافت موضوعات و تحلیل‌های کارشناسی هستند.",
                 finalResolution = "مقرر شد کلیه ارجاعات با توجه به اسناد مستر و سوابق سازمانی، از طریق ۴ حالت تصمیم‌گیری شورا پیگیری شوند."
@@ -69,32 +69,64 @@ class BoardroomRepository(
         memoryManager.getMasterDirectory()
     }
 
+    // ساختار تعریف کارگروه پیش‌فرض (شناسه، نام، رنگ، آیکون)
+    private data class AdvisorDef(val id: Int, val name: String, val color: String, val icon: String)
+
     private fun generateDefaultAdvisors(): List<AdvisorEntity> {
+        // پیش‌فرض: ۴ کارگروه (شورای دانش‌آموزی). تعداد کارگروه‌ها پویاست — کاربر می‌تواند از
+        // داخل اپ گروه اضافه یا حذف کند؛ هر گروه جدید کپی یکسان همان ساختار ۵ جایگاه را می‌گیرد.
         val advisorDefinitions = listOf(
-            Triple(1, "کارگروه استراتژی و چشم‌انداز", Pair("#3B82F6", "trending")),
-            Triple(2, "کارگروه معماری فنی و هوش مصنوعی", Pair("#6366F1", "code")),
-            Triple(3, "کارگروه مالی، بودجه و سرمایه‌گذاری", Pair("#10B981", "pie_chart")),
-            Triple(4, "کارگروه حقوقی، رگولاتوری و قراردادها", Pair("#EC4899", "balance")),
-            Triple(5, "کارگروه طراحی محصول و تجربه کاربری", Pair("#F59E0B", "brush")),
-            Triple(6, "کارگروه بازاریابی و رشد بازار", Pair("#8B5CF6", "rocket")),
-            Triple(7, "کارگروه امنیت سایبری و مدیریت ریسک", Pair("#EF4444", "security")),
-            Triple(8, "کارگروه عملیات، زنجیره تامین و لجستیک", Pair("#14B8A6", "settings")),
-            Triple(9, "کارگروه منابع انسانی و تیم‌سازی", Pair("#F97316", "people")),
-            Triple(10, "کارگروه اخلاق داده و حکمرانی AI", Pair("#06B6D4", "psychology")),
-            Triple(11, "کارگروه تحقیق، توسعه و نوآوری R&D", Pair("#84CC16", "science")),
-            Triple(12, "کارگروه روابط عمومی و برندینگ", Pair("#E11D48", "campaign")),
-            Triple(13, "کارگروه توسعه بازارهای بین‌المللی", Pair("#0284C7", "public")),
-            Triple(14, "کارگروه مشتری‌مداری و CRM", Pair("#D97706", "support_agent")),
-            Triple(15, "کارگروه زیرساخت ابری و دواپس", Pair("#4F46E5", "cloud")),
-            Triple(16, "کارگروه ممیزی کیفیت و انطباق استاندارد", Pair("#059669", "verified")),
-            Triple(17, "کارگروه تحلیل رقبا و هوشمندی رقابتی", Pair("#7C3AED", "radar")),
-            Triple(18, "کارگروه مدیریت بحران و تداوم کسب‌وکار", Pair("#DC2626", "warning")),
-            Triple(19, "کارگروه پایداری سازمانی و ESG", Pair("#16A34A", "eco")),
-            Triple(20, "کارگروه تشخیص روند و ارجاع خودکار", Pair("#D946EF", "auto_awesome"))
+            AdvisorDef(1, "گروه ۱: رویدادها 🎪", "#A855F7", "people"),
+            AdvisorDef(2, "گروه ۲: علم و فن 🔬", "#38BDF8", "science"),
+            AdvisorDef(3, "گروه ۳: فرهنگ و هنر 🎨", "#F472B6", "brush"),
+            AdvisorDef(4, "گروه ۴: ورزش و نشاط ⚽", "#34D399", "rocket")
         )
 
-        return advisorDefinitions.map { (id, name, style) ->
-            val (color, icon) = style
+        // نقش‌های ۵ جایگاه هوش مصنوعی هر گروه (ported from ai-meeting student council)
+        val slotRoles = mapOf(
+            1 to listOf(
+                "نماینده پایه دهم و یازدهم (صدای دانش‌آموزان)" to "تمرکز بر نیازها و علایق روزمره دانش‌آموزان در محیط مدرسه",
+                "کارشناس برنامه‌ریزی و تقویم آموزشی" to "تنظیم زمان‌بندی دقیق رویدادها بدون تداخل با امتحانات و کلاس‌ها",
+                "مشاور امور اجرایی و تدارکات مراسم" to "پیش‌بینی هزینه‌ها، تجهیزات و نیازهای پشتیبانی مدرسه",
+                "نماینده تعامل با اولیا و مدیریت مدرسه" to "ایجاد هماهنگی و جلب رضایت کادر مدرسه و والدین",
+                "ناظر کیفیت و بازخوردسنجی رویدادها" to "ارزیابی میزان رضایت و اثرگذاری برنامه‌ها میان بچه‌ها"
+            ),
+            2 to listOf(
+                "دبیر انجمن نخبگان و المپیاد علمی" to "طراحی کارگاه‌های آمادگی آزمون‌ها و المپیادهای کشوری",
+                "مسئول مسابقات هوش مصنوعی و برنامه‌نویسی" to "برگزاری چالش‌های فناورانه و کارگاه‌های هوش مصنوعی دانش‌آموزی",
+                "مدیر غرفه‌های آزمایشگاهی و دست‌سازه‌ها" to "برنامه‌ریزی برای نمایشگاه دستاوردهای علمی دانش‌آموزان",
+                "مشاور پروژه‌های پژوهشی و خوارزمی" to "هدایت ایده‌های دانش‌آموزی به سمت ثبت اختراع و جشنواره‌ها",
+                "مسئول ارتباط با پژوهش‌سراهای دانش‌آموزی" to "تأمین تجهیزات آزمایشگاهی پیشرفته و کارگاه‌های عملی"
+            ),
+            3 to listOf(
+                "سردبیر نشریه و پادکست دانش‌آموزی" to "تولید محتوای جذاب، مصاحبه با معلمان و انعکاس صدای بچه‌ها",
+                "مسئول گروه سرود، تئاتر و هنرهای نمایشی" to "آماده‌سازی اجراهای خلاقانه برای جشن‌ها و مناسبت‌های مدرسه",
+                "مدیر مسابقات عکاسی، طراحی و گرافیک" to "برگزاری مسابقات هنری و زیباسازی تابلوی اعلانات مدرسه",
+                "مشاور کتاب‌خوانی و نقد کتاب" to "توسعه کتابخانه مدرسه و برگزاری دورهمی‌های معرفی کتاب جذاب",
+                "روابط عمومی و فضاسازی محیط مدرسه" to "ایجاد فضایی پرانرژی، رنگارنگ و شاداب در راهروها و حیاط"
+            ),
+            4 to listOf(
+                "مسئول برگزاری المپیاد ورزشی درون‌مدرسه‌ای" to "برنامه‌ریزی لیگ فوتبال، والیبال، پینگ‌پنگ و شطرنج",
+                "مشاور سلامت و تغذیه سالم بوفه مدرسه" to "پیشنهاد خوراکی‌های سالم، بهداشتی و مورد علاقه نوجوانان",
+                "مسئول برنامه‌ریزی اردوهای هیجان‌انگیز" to "شناسایی مقاصد جذاب تفریحی، بوم‌گردی، کمپینگ و کوهپیمایی",
+                "سرگروه بازی‌های رومیزی و سرگرمی‌های فکری" to "تجهیز اتاق بازی و اوقات فراغت زنگ تفریح دانش‌آموزان",
+                "مشاور روان‌شناختی نشاط و کاهش استرس" to "ارائه راهکارهای کاهش استرس در دوران امتحانات و افزایش انگیزه"
+            )
+        )
+
+        return advisorDefinitions.map { (id, name, color, icon) ->
+            val roles = slotRoles[id] ?: emptyList()
+            val slots = (1..5).map { slot ->
+                val (roleName, roleDesc) = roles.getOrElse(slot - 1) {
+                    "مشاور هوش مصنوعی $slot" to "تحلیل مسائل مرتبط با $name"
+                }
+                SubAgentSlot(
+                    slotNumber = slot,
+                    agentName = roleName,
+                    modelType = "gemini-3.5-flash",
+                    systemPersona = "شما $roleName در «$name» هستید. مأموریت: $roleDesc. پاسخ‌های شما باید صمیمی، سازنده، پرانرژی و متناسب با فضای دانش‌آموزی باشد."
+                )
+            }
             AdvisorEntity(
                 id = id,
                 name = name,
@@ -102,8 +134,8 @@ class BoardroomRepository(
                 accentColorHex = color,
                 iconName = icon,
                 isAllowedInMeeting = true,
-                isTriageLead = (id == 20),
-                subAgentsJson = CouncilDataConverters.subAgentsToJson(CouncilDataConverters.defaultSlots(id)),
+                isTriageLead = (id == 4), // پیش‌فرض: آخرین گروه؛ از تنظیمات قابل تغییر است
+                subAgentsJson = CouncilDataConverters.subAgentsToJson(slots),
                 latestReport = "",
                 status = "آماده"
             )
@@ -133,6 +165,50 @@ class BoardroomRepository(
 
     suspend fun updateAdvisor(advisor: AdvisorEntity) = withContext(Dispatchers.IO) {
         database.councilDao().insertOrUpdate(advisor)
+    }
+
+    /**
+     * افزودن کارگروه جدید: ساختار هر گروه یکسان است (۵ جایگاه مشاور هوش مصنوعی)؛
+     * در واقع یک «کپی» از الگوی استاندارد گروه با نام/رنگ/آیکون و عناوین جایگاه‌های دلخواه ساخته می‌شود.
+     * شناسهٔ گروه جدید = بزرگ‌ترین شناسهٔ موجود + ۱.
+     */
+    suspend fun addAdvisor(
+        name: String,
+        accentColorHex: String,
+        iconName: String,
+        slotTitles: List<String>
+    ): AdvisorEntity = withContext(Dispatchers.IO) {
+        val nextId = (database.councilDao().getMaxAdvisorId() ?: 0) + 1
+        val slots = CouncilDataConverters.defaultSlots(nextId).mapIndexed { index, slot ->
+            slot.copy(agentName = slotTitles.getOrNull(index)?.takeIf { it.isNotBlank() } ?: slot.agentName)
+        }
+        val advisor = AdvisorEntity(
+            id = nextId,
+            name = name,
+            roleTitle = "کارگروه تخصصی شماره $nextId",
+            accentColorHex = accentColorHex,
+            iconName = iconName,
+            isAllowedInMeeting = true,
+            isTriageLead = false,
+            subAgentsJson = CouncilDataConverters.subAgentsToJson(slots),
+            latestReport = "",
+            status = "آماده"
+        )
+        database.councilDao().insertOrUpdate(advisor)
+        advisor
+    }
+
+    /**
+     * حذف کارگروه + پاک‌سازی کلیدهای API رمزنگاری‌شدهٔ همان گروه. اگر گروه حذف‌شده مسئول
+     * ارجاع خودکار بود، مسئولیت ارجاع به آخرین گروه باقی‌مانده منتقل می‌شود.
+     */
+    suspend fun removeAdvisor(advisorId: Int) = withContext(Dispatchers.IO) {
+        secureKeyStore.deleteKeysForAdvisor(advisorId)
+        database.councilDao().deleteAdvisorById(advisorId)
+        val remaining = database.councilDao().getAllAdvisors().firstOrNull() ?: emptyList()
+        if (remaining.none { it.isTriageLead } && remaining.isNotEmpty()) {
+            database.councilDao().setTriageLead(remaining.last().id)
+        }
     }
 
     suspend fun updateAdvisorSlots(advisorId: Int, slots: List<SubAgentSlot>) = withContext(Dispatchers.IO) {
@@ -189,14 +265,14 @@ class BoardroomRepository(
         when (mode) {
             DispatchMode.AUTO_TRIAGE -> {
                 onProgressUpdate("در حال تحلیل مسئله توسط کارگروه تشخیص روند و ارجاع...")
-                // Find triage lead (usually #20)
+                // Find triage lead (configurable from settings; falls back to the last group)
                 val triageLead = allAdvisorsList.find { it.isTriageLead } ?: allAdvisorsList.lastOrNull()
                 val triagePrompt = """
                 شما سرپرست کارگروه تشخیص روند و ارجاع خودکار شورا هستید.
                 مسئله مطرح شده توسط رییس جلسه:
                 «$userPrompt»
                 
-                لیست ۲۰ کارگروه تخصصی شورا:
+                لیست ${allAdvisorsList.size} کارگروه شورا:
                 ${allAdvisorsList.joinToString("\n") { "${it.id}. ${it.name}" }}
                 
                 وظیفه:
@@ -204,7 +280,7 @@ class BoardroomRepository(
                 
                 فرمت خروجی (اجباری):
                 فقط و فقط یک شیء JSON معتبر - بدون هیچ متن، توضیح یا Markdown اضافه قبل یا بعد از آن - دقیقاً با این ساختار برگردانید:
-                {"selectedIds": [<شناسه‌های عددی ۱ تا ۲۰ کارگروه‌های منتخب>], "reasoning": "<توضیح کوتاه دلیل انتخاب>"}
+                {"selectedIds": [<شناسه‌های عددی کارگروه‌های منتخب از ۱ تا ${allAdvisorsList.size}>], "reasoning": "<توضیح کوتاه دلیل انتخاب>"}
                 """.trimIndent()
 
                 // مدلِ مسئول تشخیص روند از تنظیمات خود همان کارگروه (جایگاه فعال اول) خوانده می‌شود؛
@@ -435,20 +511,22 @@ class BoardroomRepository(
     }
 
     private fun parseAdvisorIdsFromText(text: String, advisors: List<AdvisorEntity>): List<Int> {
+        val maxId = advisors.maxOfOrNull { it.id } ?: 0
+        val triageLeadId = advisors.find { it.isTriageLead }?.id
         val found = mutableSetOf<Int>()
-        val regex = Regex("(?:کارگروه|شماره|مشاور|کد)?\\s*(\\d{1,2})")
+        val regex = Regex("(?:کارگروه|گروه|شماره|مشاور|کد)?\\s*(\\d{1,2})")
         regex.findAll(text).forEach { match ->
             val num = match.groupValues[1].toIntOrNull()
-            if (num != null && num in 1..20 && num != 20) {
+            if (num != null && num in 1..maxId && num != triageLeadId) {
                 found.add(num)
             }
         }
         advisors.forEach { advisor ->
-            if (text.contains(advisor.name) && advisor.id != 20) {
+            if (text.contains(advisor.name) && advisor.id != triageLeadId) {
                 found.add(advisor.id)
             }
         }
-        return if (found.isNotEmpty()) found.toList() else listOf(1, 2)
+        return if (found.isNotEmpty()) found.toList() else advisors.map { it.id }.take(2)
     }
 
     suspend fun addMasterFile(name: String, description: String, content: String) = withContext(Dispatchers.IO) {

@@ -1,7 +1,7 @@
 name: Build AI Boardroom APK
 
-# این فایل باید در مسیر .github/workflows/build-apk.yml روی شاخه main قرار بگیرد.
-# بیلد همیشه از آخرین وضعیت شاخه کاری arena/01a0367d-chart-dna انجام می‌شود.
+# این فایل باید یک‌بار در مسیر .github/workflows/build-apk.yml روی شاخه main قرار بگیرد
+# (از طریق وب‌سایت GitHub؛ محتوای همین فایل را کپی کنید). سپس با هر push به main بیلد APK اجرا می‌شود.
 
 on:
   push:
@@ -14,10 +14,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source (arena working branch)
+      - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          ref: arena/01a0367d-chart-dna
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

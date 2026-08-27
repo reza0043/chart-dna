@@ -99,7 +99,7 @@ fun SettingsDialog(
         "📚 راهنمای جامع API و مدل‌ها",
         "🗄️ تنظیمات حافظه و فولدر Master",
         "⚙️ کارگروه مسئول تشخیص و ارجاع",
-        "ℹ️ معرفی معماری ۲۰ کارگروه"
+        "ℹ️ معرفی معماری کارگروه‌ها"
     )
 
     Dialog(
@@ -238,7 +238,7 @@ fun SettingsDialog(
                             onExpandChange = { triageDropdownExpanded = it },
                             onSelectTriage = onSetTriageLead
                         )
-                        3 -> ArchitectureOverviewTab()
+                        3 -> ArchitectureOverviewTab(advisorCount = advisors.size)
                     }
                 }
             }
@@ -469,7 +469,7 @@ fun MemoryAndMasterFolderTab(
                     fontSize = 12.sp
                 )
                 Text(
-                    text = "فایل‌ها و داده‌های قرار گرفته در این پوشه، در تمامی جلسات توسط هر ۲۰ کارگروه مشاور تحلیل و استناد می‌شوند.",
+                    text = "فایل‌ها و داده‌های قرار گرفته در این پوشه، در تمامی جلسات توسط همهٔ کارگروه‌های مشاور تحلیل و استناد می‌شوند.",
                     fontSize = 10.sp,
                     color = TextSecondaryDark
                 )
@@ -622,7 +622,7 @@ fun TriageCouncilSelectorTab(
 }
 
 @Composable
-fun ArchitectureOverviewTab() {
+fun ArchitectureOverviewTab(advisorCount: Int) {
     val scrollState = rememberScrollState()
 
     Column(
@@ -639,16 +639,18 @@ fun ArchitectureOverviewTab() {
         ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "ساختار هیئت مدیره و شورای ۲۰ کارگروه هوش مصنوعی",
+                    text = "ساختار شورای کارگروه‌های هوش مصنوعی",
                     fontWeight = FontWeight.Bold,
                     color = ExecutiveGold,
                     fontSize = 12.sp
                 )
                 Text(
                     text = """
-                    • نوار افقی بالا: شامل پنجره‌های کارگروه ۱ تا ۱۰ (استراتژی، معماری، مالی، حقوقی، محصول، مارکت، امنیت، عملیات، منابع انسانی، اخلاق AI).
-                    • نوار افقی پایین: شامل پنجره‌های کارگروه ۱۱ تا ۲۰ (تحقیق و توسعه، روابط عمومی، بین‌الملل، CRM، ابری، کیفیت، رقبا، بحران، پایداری، تشخیص روند).
-                    • هر پنجره دارای ۵ مشاور تخصصی هوش مصنوعی با قابلیت انتساب اختصاصی کلید API، مدل، و پرامپت است.
+                    • تعداد کارگروه‌ها پویاست: در نصب اولیه $advisorCount کارگروه فعال دارید و هر زمان که بخواهید می‌توانید گروه جدید بسازید یا گروهی را حذف کنید (دکمهٔ «➕ افزودن گروه» در انتهای نوار پایین و «حذف کارگروه» در تنظیمات هر گروه).
+                    • نوار افقی بالا: نیمهٔ اول پنجرهٔ کارگروه‌ها.
+                    • نوار افقی پایین: نیمهٔ دوم پنجرهٔ کارگروه‌ها + دکمهٔ افزودن گروه جدید.
+                    • ساختار همهٔ گروه‌ها یکسان است: هر گروه ۵ جایگاه مشاور تخصصی هوش مصنوعی دارد با قابلیت انتساب اختصاصی کلید API، مدل (Gemini، GPT، Claude، سرور Ollama و...) و پرامپت شخصاً.
+                    • افزودن هر گروه جدید در واقع یک کپی از همین الگوی استاندارد است؛ ساختار سبک می‌ماند و برنامه سنگین نمی‌شود.
                     • صفحه سمت چپ: اتاق گفتگوی بزرگ رییس جلسه با امکان ارسال متن، صوت و فایل.
                     • صفحه سمت راست: خروجی، مصوبات و سنتز نهایی جلسه.
                     """.trimIndent(),

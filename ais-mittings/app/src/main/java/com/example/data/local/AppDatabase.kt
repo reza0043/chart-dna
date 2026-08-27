@@ -41,6 +41,12 @@ interface CouncilDao {
 
     @Query("UPDATE advisors SET isTriageLead = CASE WHEN id = :triageId THEN 1 ELSE 0 END")
     suspend fun setTriageLead(triageId: Int)
+
+    @Query("SELECT MAX(id) FROM advisors")
+    suspend fun getMaxAdvisorId(): Int?
+
+    @Query("DELETE FROM advisors WHERE id = :id")
+    suspend fun deleteAdvisorById(id: Int)
 }
 
 @Dao
@@ -98,7 +104,9 @@ interface MasterFileDao {
         ChatMessage::class,
         MasterFile::class
     ],
-    version = 1,
+    // نسخهٔ ۲: تعداد کارگروه‌ها از ۲۰ ثابت به پویا (پیش‌فرض ۴ گروه دانش‌آموزی) تغییر کرد؛
+    // با fallbackToDestructiveMigration نصب‌های قبلی هم با پیش‌فرض جدید بازسازی می‌شوند.
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

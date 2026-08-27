@@ -22,7 +22,7 @@ enum class DispatchMode(val titleFa: String, val titleEn: String, val descriptio
     PUBLIC_ASSEMBLY(
         "جلسه علنی عمومی",
         "Public Assembly",
-        "کلیه ۲۰ کارگروه مشاور در جلسه شرکت کرده و نظرات جامع خود را ارائه می‌دهند."
+        "کلیه کارگروه‌های مشاور در جلسه شرکت کرده و نظرات جامع خود را ارائه می‌دهند."
     ),
     SEQUENTIAL_PIPELINE(
         "نظرات پیوسته و زنجیره‌ای",
@@ -51,13 +51,13 @@ data class SubAgentSlot(
 
 @Entity(tableName = "advisors")
 data class AdvisorEntity(
-    @PrimaryKey val id: Int, // 1 to 20
+    @PrimaryKey val id: Int, // شناسه یکتا؛ تعداد کارگروه‌ها پویاست (پیش‌فرض ۴ گروه) و کاربر می‌تواند گروه اضافه یا حذف کند
     val name: String,
     val roleTitle: String,
     val accentColorHex: String,
     val iconName: String,
     val isAllowedInMeeting: Boolean = true,
-    val isTriageLead: Boolean = (id == 20),
+    val isTriageLead: Boolean = false, // کارگروه مسئول ارجاع خودکار؛ از تنظیمات قابل تغییر است
     val subAgentsJson: String = "",
     val latestReport: String = "",
     val status: String = "آماده" // آماده, در حال تحلیل, گزارش آماده, غایب
@@ -71,8 +71,8 @@ data class MeetingSession(
     val createdAt: Long = System.currentTimeMillis(),
     val folderPath: String = "",
     val dispatchMode: String = DispatchMode.AUTO_TRIAGE.name,
-    val activeAdvisorIds: String = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
-    val pipelineSequence: String = "1,2,3",
+    val activeAdvisorIds: String = "", // خالی یعنی همهٔ کارگروه‌های فعال؛ تعداد گروه‌ها پویاست
+    val pipelineSequence: String = "1,2",
     val executiveSummary: String = "",
     val finalResolution: String = "",
     val status: String = "فعال" // فعال, پایان یافته, آرشیو

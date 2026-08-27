@@ -188,7 +188,7 @@ class BoardroomViewModel(application: Application) : AndroidViewModel(applicatio
                 attachmentName = attachmentName
             )
 
-            // Orchestrate execution among 20 councils
+            // Orchestrate execution among the councils
             repository.executeMeetingDeliberation(
                 session = session,
                 userPrompt = text + if (attachmentName != null) "\n[پیوست سند: $attachmentName]" else "",
@@ -263,6 +263,41 @@ class BoardroomViewModel(application: Application) : AndroidViewModel(applicatio
     fun setTriageLead(advisorId: Int) {
         viewModelScope.launch {
             (getApplication() as BoardroomApp).database.councilDao().setTriageLead(advisorId)
+        }
+    }
+
+    /**
+     * افزودن کارگروه جدید — یک «کپی» از الگوی استاندارد گروه (۵ جایگاه مشاور) با نام، رنگ،
+     * آیکون و عناوین جایگاه‌های انتخابی کاربر. ساختار و رفتار همهٔ گروه‌ها یکسان است و
+     * افزودن گروه جدید بار محاسباتی یا شلوغی اضافه نمی‌کند.
+     */
+    fun addNewAdvisor(
+        name: String,
+        colorHex: String,
+        iconName: String,
+        slotTitles: List<String>,
+        onDone: (Int) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val created = repository.addAdvisor(name, colorHex, iconName, slotTitles)
+            onDone(created.id)
+        }
+    }
+
+    /**
+     * حذف کارگروه + پاک‌سازی کلیدهای API رمزنگاری‌شدهٔ آن. اگر گروه حذف‌شده مسئول ارجاع
+     * بود، ارجاع به آخرین گروه باقی‌مانده منتقل می‌شود. خروجی: آیا حذف انجام شد؟
+     * (آخرین کارگروه باقی‌مانده حذف نمی‌شود.)
+     */
+    fun removeAdvisor(advisorId: Int, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val canDelete = advisors.value.size > 1
+            if (canDelete) {
+                repository.removeAdvisor(advisorId)
+                _selectedAdvisorIds.value = _selectedAdvisorIds.value - advisorId
+                _pipelineSequence.value = _pipelineSequence.value - advisorId
+            }
+            onDone(canDelete)
         }
     }
 

@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tune
@@ -59,16 +60,16 @@ import com.example.ui.theme.TextSecondaryDark
 @Composable
 fun AdvisorStrip(
     advisors: List<AdvisorEntity>,
-    startIndex: Int,
-    endIndex: Int,
     selectedIds: Set<Int>,
     isSelectiveMode: Boolean,
     onAdvisorClick: (AdvisorEntity) -> Unit,
     onOpenEdit: (AdvisorEntity) -> Unit,
     onOpenReport: (AdvisorEntity) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    stripTag: String = "strip",
+    onAddClick: (() -> Unit)? = null
 ) {
-    val displayedAdvisors = advisors.filter { it.id in startIndex..endIndex }
+    val displayedAdvisors = advisors
 
     Surface(
         color = BoardroomSurfaceDark.copy(alpha = 0.95f),
@@ -77,7 +78,7 @@ fun AdvisorStrip(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .testTag("advisor_strip_${startIndex}_${endIndex}")
+            .testTag("advisor_strip_$stripTag")
     ) {
         Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp)) {
             Row(
@@ -96,7 +97,45 @@ fun AdvisorStrip(
                         onOpenReport = { onOpenReport(advisor) }
                     )
                 }
+                if (onAddClick != null) {
+                    AddAdvisorCard(onClick = onAddClick)
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun AddAdvisorCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = BoardroomSurfaceElevated.copy(alpha = 0.6f)),
+        border = BorderStroke(1.dp, ExecutiveCyan.copy(alpha = 0.4f)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+            .width(86.dp)
+            .height(74.dp)
+            .clickable { onClick() }
+            .testTag("add_advisor_card")
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(4.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "افزودن کارگروه",
+                tint = ExecutiveCyan,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "افزودن گروه",
+                fontSize = 9.sp,
+                color = ExecutiveCyan,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

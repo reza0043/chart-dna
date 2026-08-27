@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -45,6 +46,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +72,7 @@ import com.example.ui.theme.BoardroomSurfaceElevated
 import com.example.ui.theme.BoardroomSurfaceHighlight
 import com.example.ui.theme.ExecutiveCyan
 import com.example.ui.theme.ExecutiveGold
+import com.example.ui.theme.ExecutiveRose
 import com.example.ui.theme.TextPrimaryDark
 import com.example.ui.theme.TextSecondaryDark
 
@@ -79,6 +82,7 @@ fun AdvisorConfigDialog(
     onDismiss: () -> Unit,
     onSave: (AdvisorEntity, String, String, String, String, List<SubAgentSlot>) -> Unit,
     onSetTriageLead: (Int) -> Unit,
+    onDelete: ((AdvisorEntity) -> Unit)? = null,
     // API keys are stored encrypted outside Room and are NOT part of advisor.subAgentsJson —
     // the caller (MainActivity, via viewModel.getApiKeysForAdvisor) supplies the decrypted
     // values so the dialog can pre-fill each slot's key field. Keyed by slotNumber (1..5).
@@ -90,6 +94,7 @@ fun AdvisorConfigDialog(
     var selectedIcon by remember { mutableStateOf(advisor.iconName) }
     var isAllowed by remember { mutableStateOf(advisor.isAllowedInMeeting) }
     var isTriage by remember { mutableStateOf(advisor.isTriageLead) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     var slots by remember {
         mutableStateOf(
@@ -458,29 +463,73 @@ fun AdvisorConfigDialog(
                 // Action Footer
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(containerColor = BoardroomSurfaceElevated),
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Text("انصراف", color = TextSecondaryDark)
+                    // حذف کارگروه (با تأیید دومرحله‌ای) — تعداد کارگروه‌ها پویاست
+                    if (onDelete != null) {
+                        Button(
+                            onClick = { showDeleteConfirm = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = ExecutiveRose.copy(alpha = 0.18f)),
+                            modifier = Modifier.testTag("delete_advisor_button")
+                        ) {
+                            Text("🗑 حذف کارگروه", color = ExecutiveRose, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
                     }
 
-                    Button(
-                        onClick = {
-                            val updatedAdvisor = advisor.copy(isAllowedInMeeting = isAllowed)
-                            onSave(updatedAdvisor, councilName, roleTitle, selectedColor, selectedIcon, slots)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = ExecutiveGold),
-                        modifier = Modifier.testTag("save_advisor_button")
-                    ) {
-                        Text("ذخیره تغییرات کارگروه", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Button(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.buttonColors(containerColor = BoardroomSurfaceElevated),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text("انصراف", color = TextSecondaryDark)
+                        }
+
+                        Button(
+                            onClick = {
+                                val updatedAdvisor = advisor.copy(isAllowedInMeeting = isAllowed)
+                                onSave(updatedAdvisor, councilName, roleTitle, selectedColor, selectedIcon, slots)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ExecutiveGold),
+                            modifier = Modifier.testTag("save_advisor_button")
+                        ) {
+                            Text("ذخیره تغییرات کارگروه", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
+    }
+
+    // تأیید نهایی حذف کارگروه
+    if (showDeleteConfirm && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("حذف کارگروه", color = TextPrimaryDark, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "آیا از حذف «${advisor.name}» مطمئن هستید؟ کلیدهای API ذخیره‌شدهٔ این گروه هم پاک می‌شوند و این عمل قابل بازگشت نیست.",
+                    color = TextSecondaryDark,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete(advisor)
+                }) {
+                    Text("بله، حذف شود", color = ExecutiveRose, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("انصراف", color = TextSecondaryDark)
+                }
+            },
+            containerColor = BoardroomSurfaceDark
+        )
     }
 }

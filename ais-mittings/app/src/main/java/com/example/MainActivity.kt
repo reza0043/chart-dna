@@ -59,6 +59,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AdvisorEntity
 import com.example.data.model.DispatchMode
+import com.example.ui.components.AddAdvisorDialog
 import com.example.ui.components.AdvisorConfigDialog
 import com.example.ui.components.AdvisorReportDialog
 import com.example.ui.components.AdvisorStrip
@@ -115,6 +116,15 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
 
     // پنجره گزارش کارگروه انتخاب‌شده (زیر پنجره‌های نوار بالا/پایین)
     var reportAdvisor by remember { mutableStateOf<AdvisorEntity?>(null) }
+
+    // دیالوگ افزودن کارگروه جدید — تعداد کارگروه‌ها پویاست (پیش‌فرض ۴ گروه)
+    var isAddAdvisorOpen by remember { mutableStateOf(false) }
+
+    // تقسیم پویای کارگروه‌ها بین دو نوار بالا/پایین (نصف اول بالا، نصف دوم پایین)
+    val halfCount = (advisors.size + 1) / 2
+    val topAdvisors = advisors.take(halfCount)
+    val bottomAdvisors = advisors.drop(halfCount)
+    val nextAdvisorId = (advisors.maxOfOrNull { it.id } ?: 0) + 1
 
     // ===== انتخاب فایل واقعی از دستگاه (متن، صدا، تصویر، سند و ...) =====
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -225,7 +235,7 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "شورای مشاوران هوش مصنوعی (۲۰ کارگروه تخصصی / ۱۰۰ مدل مشاور)",
+                            text = "شورای مشاوران هوش مصنوعی (${advisors.size} کارگروه / ${advisors.size * 5} مدل مشاور)",
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimaryDark,
@@ -271,13 +281,12 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
                 .padding(4.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Top Horizontal Strip: 10 Advisor Windows (Advisors 1 to 10)
+            // 1. Top Horizontal Strip: نیمهٔ اول کارگروه‌ها (تعداد پویا)
             AdvisorStrip(
-                advisors = advisors,
-                startIndex = 1,
-                endIndex = 10,
+                advisors = topAdvisors,
                 selectedIds = selectedAdvisorIds,
                 isSelectiveMode = (dispatchMode == DispatchMode.SELECTIVE),
+                stripTag = "top",
                 onAdvisorClick = { adv ->
                     if (dispatchMode == DispatchMode.SELECTIVE) {
                         viewModel.toggleAdvisorSelection(adv.id)
@@ -347,13 +356,13 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
                 }
             }
 
-            // 3. Bottom Horizontal Strip: 10 Advisor Windows (Advisors 11 to 20)
+            // 3. Bottom Horizontal Strip: نیمهٔ دوم کارگروه‌ها + دکمهٔ «افزودن گروه»
             AdvisorStrip(
-                advisors = advisors,
-                startIndex = 11,
-                endIndex = 20,
+                advisors = bottomAdvisors,
                 selectedIds = selectedAdvisorIds,
                 isSelectiveMode = (dispatchMode == DispatchMode.SELECTIVE),
+                stripTag = "bottom",
+                onAddClick = { isAddAdvisorOpen = true },
                 onAdvisorClick = { adv ->
                     if (dispatchMode == DispatchMode.SELECTIVE) {
                         viewModel.toggleAdvisorSelection(adv.id)
@@ -377,7 +386,31 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
             onSave = { adv, name, role, color, icon, slots ->
                 viewModel.saveAdvisorEdit(adv, name, role, color, icon, slots)
             },
-            onSetTriageLead = { id -> viewModel.setTriageLead(id) }
+            onSetTriageLead = { id -> viewModel.setTriageLead(id) },
+            onDelete = { adv ->
+                viewModel.removeAdvisor(adv.id) { deleted ->
+                    if (deleted) {
+                        viewModel.closeAdvisorEdit()
+                        Toast.makeText(context, "کارگروه «${adv.name}» حذف شد", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "حداقل یک کارگروه باید باقی بماند", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        )
+    }
+
+    // دیالوگ افزودن کارگروه جدید
+    if (isAddAdvisorOpen) {
+        AddAdvisorDialog(
+            nextId = nextAdvisorId,
+            onDismiss = { isAddAdvisorOpen = false },
+            onAddAdvisor = { name, colorHex, iconName, slotTitles ->
+                viewModel.addNewAdvisor(name, colorHex, iconName, slotTitles) { newId ->
+                    Toast.makeText(context, "کارگروه #$newId («$name») ایجاد شد — برای تنظیم مدل‌ها رویش بزنید", Toast.LENGTH_LONG).show()
+                }
+                isAddAdvisorOpen = false
+            }
         )
     }
 
