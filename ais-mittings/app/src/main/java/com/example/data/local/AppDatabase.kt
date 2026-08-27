@@ -104,9 +104,9 @@ interface MasterFileDao {
         ChatMessage::class,
         MasterFile::class
     ],
-    // نسخهٔ ۲: تعداد کارگروه‌ها از ۲۰ ثابت به پویا (پیش‌فرض ۴ گروه دانش‌آموزی) تغییر کرد؛
+    // نسخهٔ ۳: تعداد کارگروه‌ها پویاست (پیش‌فرض ۴ گروه سازمانی: استراتژی، فناوری، مالی، حقوقی)؛
     // با fallbackToDestructiveMigration نصب‌های قبلی هم با پیش‌فرض جدید بازسازی می‌شوند.
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -68,23 +68,23 @@ fun AddAdvisorDialog(
     onDismiss: () -> Unit,
     onAddAdvisor: (name: String, colorHex: String, iconName: String, slotTitles: List<String>) -> Unit
 ) {
-    // پیش‌تنظیم‌های آماده (شورای دانش‌آموزی) — با یک کلیک همهٔ فیلدها پر می‌شوند
+    // پیش‌تنظیم‌های آماده (حوزه‌های رایج سازمانی) — با یک کلیک همهٔ فیلدها پر می‌شوند
     val presets = listOf(
-        PresetGroup("گروه $nextId: انضباط 🕊️", "#818CF8", "balance", listOf("نماینده انضباطی", "مشاور حل اختلاف", "ناظر حیاط و راهروها", "رابط معلمین", "سفیر دوستی")),
-        PresetGroup("گروه $nextId: اردو 🏕️", "#34D399", "public", listOf("مسئول برنامه‌ریزی اردو", "مسئول ایمنی و سلامت", "عکاس و مستندساز", "مسئول تدارکات", "مشاور بازی‌های گروهی")),
-        PresetGroup("گروه $nextId: نشریه 🎙️", "#F472B6", "campaign", listOf("سردبیر نشریه", "گوینده رادیو مدرسه", "طراح و گرافیست", "خبرنگار رویدادها", "مسئول مصاحبه‌ها")),
-        PresetGroup("گروه $nextId: نوآوری 💻", "#22D3EE", "code", listOf("مربی هوش مصنوعی", "توسعه‌دهنده وب مدرسه", "طراح رباتیک", "مسئول چالش‌های کدنویسی", "پشتیبان نرم‌افزار")),
-        PresetGroup("گروه $nextId: نیکوکاری 💖", "#FB7185", "eco", listOf("مسئول صندوق نیکوکاری", "شناسایی نیازهای مدرسه", "برگزارکننده بازارچه خیریه", "رابط با خیریه‌ها", "سفیر مهربانی"))
+        PresetGroup("گروه $nextId: بازاریابی و فروش 📣", "#818CF8", "campaign", listOf("مدیر برند و پیام", "کارشناس بازاریابی دیجیتال", "تحلیل‌گر قیف فروش", "کارشناس قیمت‌گذاری", "مدیر کمپین‌های تبلیغاتی")),
+        PresetGroup("گروه $nextId: منابع انسانی 👥", "#34D399", "people", listOf("کارشناس جذب و استخدام", "کارشناس آموزش و توسعه", "کارشناس جبران خدمات", "کارشناس فرهنگ سازمانی", "کارشناس عملکرد و ارزیابی")),
+        PresetGroup("گروه $nextId: امنیت و ریسک 🛡️", "#22D3EE", "security", listOf("کارشناس امنیت سایبری", "کارشناس تداوم کسب‌وکار", "مدیر بحران", "کارشناس انطباق ISO", "کارشناس بیمه و پوشش ریسک")),
+        PresetGroup("گروه $nextId: روابط عمومی 📰", "#F472B6", "public", listOf("مدیر ارتباط با رسانه", "سخنگوی سازمان", "کارشناس ارتباطات داخلی", "کارشناس مدیریت بحران رسانه‌ای", "کارشناس روابط دولتی")),
+        PresetGroup("گروه $nextId: عملیات و لجستیک 🚚", "#FB7185", "settings", listOf("مدیر عملیات", "کارشناس زنجیره تأمین", "کارشناس انبارداری و توزیع", "کارشناس بهبود فرایند", "کارشناس برنامه‌ریزی تولید"))
     )
 
     var name by remember { mutableStateOf("گروه $nextId") }
     var selectedColor by remember { mutableStateOf("#A855F7") }
     var selectedIcon by remember { mutableStateOf("auto_awesome") }
-    var slot1 by remember { mutableStateOf("مشاور ۱") }
-    var slot2 by remember { mutableStateOf("مشاور ۲") }
-    var slot3 by remember { mutableStateOf("مشاور ۳") }
-    var slot4 by remember { mutableStateOf("مشاور ۴") }
-    var slot5 by remember { mutableStateOf("مشاور ۵") }
+    var slot1 by remember { mutableStateOf("تحلیل‌گر ارشد") }
+    var slot2 by remember { mutableStateOf("کارشناس ارزیابی ریسک") }
+    var slot3 by remember { mutableStateOf("کارشناس اجرا و پیاده‌سازی") }
+    var slot4 by remember { mutableStateOf("نقاد و بازبین مستقل") }
+    var slot5 by remember { mutableStateOf("تدوین‌گر گزارش نهایی") }
 
     val colorOptions = listOf(
         "#A855F7", "#38BDF8", "#F472B6", "#34D399", "#FBBF24",

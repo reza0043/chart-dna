@@ -66,7 +66,6 @@ import com.example.ui.components.AdvisorStrip
 import com.example.ui.components.ChatPane
 import com.example.ui.components.NewSessionDialog
 import com.example.ui.components.PipelineEditorDialog
-import com.example.ui.components.ResultsPane
 import com.example.ui.components.SettingsDialog
 import com.example.ui.theme.BoardroomBorder
 import com.example.ui.theme.BoardroomDarkBg
@@ -120,10 +119,6 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
     // دیالوگ افزودن کارگروه جدید — تعداد کارگروه‌ها پویاست (پیش‌فرض ۴ گروه)
     var isAddAdvisorOpen by remember { mutableStateOf(false) }
 
-    // تقسیم پویای کارگروه‌ها بین دو نوار بالا/پایین (نصف اول بالا، نصف دوم پایین)
-    val halfCount = (advisors.size + 1) / 2
-    val topAdvisors = advisors.take(halfCount)
-    val bottomAdvisors = advisors.drop(halfCount)
     val nextAdvisorId = (advisors.maxOfOrNull { it.id } ?: 0) + 1
 
     // ===== انتخاب فایل واقعی از دستگاه (متن، صدا، تصویر، سند و ...) =====
@@ -281,87 +276,12 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
                 .padding(4.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Top Horizontal Strip: نیمهٔ اول کارگروه‌ها (تعداد پویا)
+            // 1. Top Horizontal Strip: همهٔ کارگروه‌ها (تعداد پویا) + دکمهٔ «افزودن گروه»
             AdvisorStrip(
-                advisors = topAdvisors,
+                advisors = advisors,
                 selectedIds = selectedAdvisorIds,
                 isSelectiveMode = (dispatchMode == DispatchMode.SELECTIVE),
                 stripTag = "top",
-                onAdvisorClick = { adv ->
-                    if (dispatchMode == DispatchMode.SELECTIVE) {
-                        viewModel.toggleAdvisorSelection(adv.id)
-                    } else {
-                        viewModel.openAdvisorEdit(adv)
-                    }
-                },
-                onOpenEdit = { adv -> viewModel.openAdvisorEdit(adv) },
-                onOpenReport = { adv -> reportAdvisor = adv },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // 2. Main Middle Workspace:
-            //    سمت چپ: پنجره بزرگ گفتگو (متن، صدا، فایل)
-            //    سمت راست: صفحه پاسخ‌ها و نتایج کلی جلسه
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Box(modifier = Modifier.weight(0.62f)) {
-                    ChatPane(
-                        session = currentSession,
-                        sessions = sessions,
-                        messages = messages,
-                        currentMode = dispatchMode,
-                        isProcessing = isProcessing,
-                        progressMessage = progressMessage,
-                        attachedFile = attachedFile,
-                        isVoiceListening = isVoiceListening,
-                        pipelineSequence = pipelineSequence,
-                        onSelectSession = { s -> viewModel.selectSession(s) },
-                        onOpenNewSessionDialog = { viewModel.openNewSessionDialog() },
-                        onModeSelected = { mode -> viewModel.setDispatchMode(mode) },
-                        onSendMessage = { text -> viewModel.sendChairmanMessage(text) },
-                        onAttachFile = { filePickerLauncher.launch(arrayOf("*/*")) },
-                        onRemoveAttachment = { viewModel.removeAttachment() },
-                        onToggleVoice = { onTranscript ->
-                            if (isVoiceListening) {
-                                viewModel.stopSpeechRecognition()
-                            } else {
-                                val micGranted = ContextCompat.checkSelfPermission(
-                                    context, Manifest.permission.RECORD_AUDIO
-                                ) == PackageManager.PERMISSION_GRANTED
-                                if (micGranted) {
-                                    viewModel.startSpeechRecognition { result -> onTranscript(result) }
-                                } else {
-                                    pendingVoiceTranscript = onTranscript
-                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                }
-                            }
-                        },
-                        onEditPipeline = { viewModel.openPipelineEditor() },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                Box(modifier = Modifier.weight(0.38f)) {
-                    ResultsPane(
-                        session = currentSession,
-                        advisors = advisors,
-                        isProcessing = isProcessing,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-
-            // 3. Bottom Horizontal Strip: نیمهٔ دوم کارگروه‌ها + دکمهٔ «افزودن گروه»
-            AdvisorStrip(
-                advisors = bottomAdvisors,
-                selectedIds = selectedAdvisorIds,
-                isSelectiveMode = (dispatchMode == DispatchMode.SELECTIVE),
-                stripTag = "bottom",
                 onAddClick = { isAddAdvisorOpen = true },
                 onAdvisorClick = { adv ->
                     if (dispatchMode == DispatchMode.SELECTIVE) {
@@ -374,6 +294,49 @@ fun BoardroomMainScreen(viewModel: BoardroomViewModel) {
                 onOpenReport = { adv -> reportAdvisor = adv },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            // 2. Main Workspace: پنل چت یکپارچهٔ تمام‌عرض (جریان پیام‌ها + نوار ورودی متن/صدا/فایل)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
+            ) {
+                ChatPane(
+                    session = currentSession,
+                    sessions = sessions,
+                    messages = messages,
+                    currentMode = dispatchMode,
+                    isProcessing = isProcessing,
+                    progressMessage = progressMessage,
+                    attachedFile = attachedFile,
+                    isVoiceListening = isVoiceListening,
+                    pipelineSequence = pipelineSequence,
+                    onSelectSession = { s -> viewModel.selectSession(s) },
+                    onOpenNewSessionDialog = { viewModel.openNewSessionDialog() },
+                    onModeSelected = { mode -> viewModel.setDispatchMode(mode) },
+                    onSendMessage = { text -> viewModel.sendChairmanMessage(text) },
+                    onAttachFile = { filePickerLauncher.launch(arrayOf("*/*")) },
+                    onRemoveAttachment = { viewModel.removeAttachment() },
+                    onToggleVoice = { onTranscript ->
+                        if (isVoiceListening) {
+                            viewModel.stopSpeechRecognition()
+                        } else {
+                            val micGranted = ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.RECORD_AUDIO
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (micGranted) {
+                                viewModel.startSpeechRecognition { result -> onTranscript(result) }
+                            } else {
+                                pendingVoiceTranscript = onTranscript
+                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                    },
+                    onEditPipeline = { viewModel.openPipelineEditor() },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 
