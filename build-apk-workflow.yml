@@ -1,0 +1,41 @@
+name: Build AI Boardroom APK
+
+# این فایل باید یک‌بار در مسیر .github/workflows/build-apk.yml روی شاخه main قرار بگیرد
+# (از طریق وب‌سایت GitHub؛ محتوای همین فایل را کپی کنید). سپس با هر push به main بیلد APK اجرا می‌شود.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-debug-apk:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK platform 36
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Build debug APK
+        working-directory: ais-mittings
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Boardroom-debug-APK
+          path: ais-mittings/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+          if-no-files-found: error
