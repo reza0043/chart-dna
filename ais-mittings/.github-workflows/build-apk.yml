@@ -1,7 +1,10 @@
 name: Build AI Boardroom APK
 
-# این فایل باید یک‌بار در مسیر .github/workflows/build-apk.yml روی شاخه main قرار بگیرد
-# (از طریق وب‌سایت GitHub؛ محتوای همین فایل را کپی کنید). سپس با هر push به main بیلد APK اجرا می‌شود.
+# ساخت خودکار فایل APK برای اپلیکیشن «شورای هوش مصنوعی» (AI Boardroom)
+# - با هر push به شاخهٔ main اجرا می‌شود
+# - یا دستی: تب Actions › «Build AI Boardroom APK» › Run workflow
+# در صورت اجرای دستی از یک شاخهٔ دیگر (مثلاً شاخهٔ کاری arena/...)، همان شاخه بیلد می‌شود.
+# نسخهٔ مرجع این فایل: ais-mittings/.github-workflows/build-apk.yml
 
 on:
   push:
@@ -16,6 +19,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -37,5 +42,5 @@ jobs:
         with:
           name: AI-Boardroom-debug-APK
           path: ais-mittings/app/build/outputs/apk/debug/*.apk
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: error
