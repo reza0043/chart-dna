@@ -1,0 +1,46 @@
+name: Build AI Boardroom APK
+
+# ساخت خودکار فایل APK برای اپلیکیشن «شورای هوش مصنوعی» (AI Boardroom)
+# - با هر push به شاخهٔ main اجرا می‌شود
+# - یا دستی: تب Actions › «Build AI Boardroom APK» › Run workflow
+# در اجرای دستی از هر شاخهٔ دیگر (مثلاً شاخهٔ کاری arena/...) همان شاخه بیلد می‌شود.
+# نسخهٔ مرجع همین فایل: ais-mittings/.github-workflows/build-apk.yml
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-debug-apk:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK platform 36
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Build debug APK
+        working-directory: ais-mittings
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Boardroom-debug-APK
+          path: ais-mittings/app/build/outputs/apk/debug/*.apk
+          retention-days: 90
+          if-no-files-found: error
